@@ -61,3 +61,29 @@
   "webToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiNjAzN2U1ODgtN2RhOS00NDIyLThiZmMtZDc4MGViN2QzOWUwIiwiaWF0IjoxNzI5NzY5ODM5LCJleHAiOjE3MzA2MzM4Mzl9.xBX5QCwEywDy3fkC7_zVy4r_zhK0E3xdhdAXydyHhdE"
 }
 ```
+
+### Get User
+
+- **Endpoint**: `http://localhost:8000/api/user/:id`
+- **Method**: `GET`
+
+#### Request Body
+
+```json
+{
+  "id": "userid",
+}
+```
+
+### Validate User
+
+- **Endpoint**: `http://localhost:8000/api/user/validate/:id`
+- **Method**: `GET`
+
+#### Request Body
+
+```json
+{
+  "id": "userid",
+}
+```
