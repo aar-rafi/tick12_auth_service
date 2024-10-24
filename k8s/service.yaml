@@ -1,0 +1,13 @@
+# auth-service Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: tick12-auth-service
+spec:
+  selector:
+    app: auth
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  type: ClusterIP
