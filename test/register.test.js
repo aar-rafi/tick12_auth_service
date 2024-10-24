@@ -2,7 +2,6 @@ import request from "supertest";
 import app from "../app.js";
 import mongoose from "mongoose";
 import { mongodbURL } from "../config.js";
-import { User } from "../models/user.model.js";
 
 describe("User Registration Endpoint Tests", () => {
   beforeAll(async () => {

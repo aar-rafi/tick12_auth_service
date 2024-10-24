@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import app from "./app.js";
 const PORT = 8000;
 
