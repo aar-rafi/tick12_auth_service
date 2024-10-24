@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import express from "express";
 import cors from "cors";
-import {pool} from "./database/pool.js";
+import { pool } from "./database/pool.js";
 
 const app = express();
 
@@ -30,6 +30,18 @@ pool.connect((err, client, release) => {
   console.log("Connected to PostgreSQL pool");
   release(); // release the client back to the pool
 });
+
+// Prometheus
+import promMid from "express-prometheus-middleware";
+app.use(
+  promMid({
+    metricsPath: "/metrics",
+    collectDefaultMetrics: true,
+    requestDurationBuckets: [0.1, 0.5, 1, 1.5],
+    requestLengthBuckets: [512, 1024, 5120, 10240, 51200, 102400],
+    responseLengthBuckets: [512, 1024, 5120, 10240, 51200, 102400],
+  })
+);
 
 // Importing the routes
 import userRoute from "./routes/user.route.js";
