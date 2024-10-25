@@ -1,21 +1,25 @@
 import request from "supertest";
-import app from "../app.js";
 import { pool } from "../database/pool.js"; // PostgreSQL connection pool
-import redisClient from "../redis/redis.client.js";
+// import redisClient from "../redis/redis.client.js";
+
+let client;
 
 describe("API Endpoint Tests with PostgreSQL and Redis", () => {
   beforeAll(async () => {
-    // Connect to PostgreSQL and Redis before running the tests
-    await pool.connect();
-  });
+    client = await pool.connect();
+    console.log("Connected to PostgreSQL pool");
+  }, 15000); // Set timeout to 15 seconds
+
+  const apiURL = "https://services.district12.xyz/auth";
 
   // Utility function for login request
-  const postLoginRequest = (userData) => request(app).post("/api/user/login").send(userData);
+  const postLoginRequest = (userData) =>
+    request(apiURL).post("/api/user/login").send(userData);
 
   it("should return success message for POST /api/user/login with valid credentials", async () => {
     const validUser = {
-      phone_number: "1234567890", // Replace with valid test phone number
-      password: "validpassword",  // Replace with valid test password
+      phone_number: "01838383234", // Replace with valid test phone number
+      password: "irtiaz", // Replace with valid test password
     };
 
     const response = await postLoginRequest(validUser);
@@ -27,7 +31,7 @@ describe("API Endpoint Tests with PostgreSQL and Redis", () => {
 
   it("should return 400 error for POST /api/user/login with missing fields", async () => {
     const invalidUser = {
-      phone_number: "1234567890", // Password is missing
+      phone_number: "01838383234", // Password is missing
     };
 
     const response = await postLoginRequest(invalidUser);
@@ -38,7 +42,7 @@ describe("API Endpoint Tests with PostgreSQL and Redis", () => {
 
   it("should return 404 error for POST /api/user/login with invalid phone number", async () => {
     const invalidUser = {
-      phone_number: "9999999999",  // Non-existent phone number
+      phone_number: "9999999999", // Non-existent phone number
       password: "password123",
     };
 
@@ -50,8 +54,8 @@ describe("API Endpoint Tests with PostgreSQL and Redis", () => {
 
   it("should return 401 error for POST /api/user/login with invalid password", async () => {
     const invalidUser = {
-      phone_number: "1234567890",  // Replace with a valid test phone number
-      password: "wrongpassword",   // Incorrect password
+      phone_number: "01838383234", // Replace with a valid test phone number
+      password: "wrongpassword", // Incorrect password
     };
 
     const response = await postLoginRequest(invalidUser);
@@ -61,14 +65,16 @@ describe("API Endpoint Tests with PostgreSQL and Redis", () => {
   });
 
   afterAll(async () => {
-    // Clean up PostgreSQL and Redis connections
     try {
-      await redisClient.flushall(); // Optional: Clear Redis cache after tests
+      // await redisClient.flushall(); // Optional: Clear Redis cache after tests
     } catch (err) {
       console.error("Error cleaning Redis cache:", err);
     } finally {
-      await pool.end(); // Close PostgreSQL connection
-      await redisClient.quit(); // Close Redis connection
+      if (client) {
+        client.release(); // Release the client back to the pool
+      }
+      await pool.end(); // Close PostgreSQL connection pool
+      // await redisClient.quit(); // Close Redis connection
     }
-  });
+  }, 15000); // Set timeout to 15 seconds
 });
