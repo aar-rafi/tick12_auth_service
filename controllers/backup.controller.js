@@ -1,3 +1,5 @@
+// This controller file is implemented WITHOUT all the redis features for local development and testing
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config.js";

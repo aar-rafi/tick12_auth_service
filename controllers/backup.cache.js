@@ -1,3 +1,5 @@
+// This controller file is implemented WITH all the redis features for production
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config.js";
