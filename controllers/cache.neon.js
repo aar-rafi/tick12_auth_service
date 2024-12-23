@@ -1,9 +1,9 @@
-// This controller file is implemented WITHOUT all the redis features for local development and testing
+// This controller file is implemented WITH all the redis features for production
 // Uses NEON database hosting
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config.js";
-// import redisClient from "../redis/redis.client.js";
+import redisClient from "../redis/redis.client.js";
 //import { pool } from "../database/pool.js";
 import { sql } from "../database/neon/pool.js";
 import { v4 as uuidv4 } from "uuid"; // Import UUID for generating user_id
@@ -33,20 +33,19 @@ const registerUser = async (req, res) => {
     const salt = await bcrypt.genSalt();
     const hashedPassword = await bcrypt.hash(password, salt);
     const user_id = uuidv4(); // Generate a UUID for the new user
-    //const createdAt = new Date();
+    const createdAt = new Date();
 
     const result = await sql`
-      INSERT INTO users (user_id, name, phone_number, password)
-      VALUES (${user_id}, ${name}, ${phone_number}, ${hashedPassword})
+      INSERT INTO users (user_id, name, phone_number, password, createdAt)
+      VALUES (${user_id}, ${name}, ${phone_number}, ${hashedPassword}, ${createdAt})
       RETURNING user_id, name
     `;
-
     const user = result[0];
 
     const webToken = createToken(user.user_id);
 
     // Cache the new user data in Redis
-    // await redisClient.set(`user:${user.user_id}`, JSON.stringify(user), "EX", 3600); // 1 hour expiration
+    await redisClient.set(`user:${user.user_id}`, JSON.stringify(user), "EX", 3600); // 1 hour expiration
 
     return res.status(201).send({ name: user.name, webToken });
   } catch (e) {
@@ -65,35 +64,26 @@ const loginUser = async (req, res) => {
   try {
     // Check if user data exists in Redis cache
     let user;
-    // const cachedUser = await redisClient.get(`user:${phone_number}`);
+    const cachedUser = await redisClient.get(`user:${phone_number}`);
 
-    // if (cachedUser) {
-    //   // Parse cached user data
-    //   user = JSON.parse(cachedUser);
-    // } else {
-    //   // Fallback to PostgreSQL if cache miss
-    //   const query = `SELECT * FROM users WHERE phone_number = $1`;
-    //   const result = await pool.query(query, [phone_number]);
-    //   user = result[0];
-    //   if (!user) {
-    //     return res.status(404).send({ error: "No such phone number found" });
-    //   }
+    if (cachedUser) {
+      // Parse cached user data
+      user = JSON.parse(cachedUser);
+    } else {
+      // Fallback to PostgreSQL if cache miss
+      const result = await sql`SELECT * FROM users WHERE phone_number = ${phone_number}`;
+      user = result[0];
+      if (!user) {
+        return res.status(404).send({ error: "No such phone number found" });
+      }
 
-    //   // Cache the user data
-    //   await redisClient.set(
-    //     `user:${phone_number}`,
-    //     JSON.stringify(user),
-    //     "EX",
-    //     3600
-    //   ); // 1 hour expiration
-    // }
-
-    // Query without cache
-    // Fallback to PostgreSQL if cache miss
-    const result = await sql`SELECT * FROM users WHERE phone_number = ${phone_number}`;
-    user = result[0];
-    if (!user) {
-      return res.status(404).send({ error: "No such phone number found" });
+      // Cache the user data
+      await redisClient.set(
+        `user:${phone_number}`,
+        JSON.stringify(user),
+        "EX",
+        3600
+      ); // 1 hour expiration
     }
 
     // Validate password
@@ -115,28 +105,20 @@ const getUserByID = async (req, res) => {
 
   try {
     // Check Redis cache first
-    // const cachedUser = await redisClient.get(`user:${id}`);
-    // if (cachedUser) {
-    //   return res.status(200).send(JSON.parse(cachedUser));
-    // }
+    const cachedUser = await redisClient.get(`user:${id}`);
+    if (cachedUser) {
+      return res.status(200).send(JSON.parse(cachedUser));
+    }
 
-    // // If not in cache, get user from PostgreSQL
-    // const query = `SELECT user_id, name, phone_number, createdAt FROM users WHERE user_id = $1`;
-    // const result = await pool.query(query, [id]);
-    // const user = result[0];
-    // if (!user) {
-    //   return res.status(404).send({ error: "No such id found" });
-    // }
-
-    // // Cache the user data
-    // await redisClient.set(`user:${id}`, JSON.stringify(user), "EX", 3600); // 1 hour expiration
-
-    // Query without cache
+    // If not in cache, get user from PostgreSQL
     const result = await sql`SELECT user_id, name, phone_number, createdAt FROM users WHERE user_id = ${id}`;
     const user = result[0];
     if (!user) {
       return res.status(404).send({ error: "No such id found" });
     }
+
+    // Cache the user data
+    await redisClient.set(`user:${id}`, JSON.stringify(user), "EX", 3600); // 1 hour expiration
 
     return res.status(200).send(user);
   } catch (e) {
@@ -150,10 +132,10 @@ const validateUserByID = async (req, res) => {
 
   try {
     // Check Redis cache first
-    // const cachedUser = await redisClient.get(`user:${id}`);
-    // if (cachedUser) {
-    //   return res.status(200).send({ user: JSON.parse(cachedUser) });
-    // }
+    const cachedUser = await redisClient.get(`user:${id}`);
+    if (cachedUser) {
+      return res.status(200).send({ user: JSON.parse(cachedUser) });
+    }
 
     // If not in cache, get user from PostgreSQL
     const result = await sql`SELECT user_id, name, phone_number, createdAt FROM users WHERE user_id = ${id}`;
@@ -163,7 +145,7 @@ const validateUserByID = async (req, res) => {
     }
 
     // Cache the user data
-    // await redisClient.set(`user:${id}`, JSON.stringify(user), "EX", 3600); // 1 hour expiration
+    await redisClient.set(`user:${id}`, JSON.stringify(user), "EX", 3600); // 1 hour expiration
 
     return res.status(200).send({ user });
   } catch (e) {
